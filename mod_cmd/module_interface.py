@@ -1,5 +1,4 @@
 import time
-from signal import signal, SIGINT
 #import subprocess
 import argparse as agp
 import numpy as np
@@ -113,12 +112,4 @@ def imp_pantalla(valor, arg, valor_i, valor_f, tiempo_incio_int,
             print('Tiempo estimado de finalizcion: ', string_rest)
 
 
-def signal_handler(sig_rcv, frame):
-
-    fecha = inicial_date()
-    print('\nDetenida la integracion por interrupcion de teclado: ', fecha,'\n')
-    raise StopIteration
-
-def detencion_programa():
-    signal(SIGINT, signal_handler)
 

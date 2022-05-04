@@ -23,21 +23,37 @@
 
 import sys
 import numpy as np
-#import pyopencl as cl
 from mod_cmd.module_interface import (escritura_archivo, imp_pantalla,
-                                      lectura_archivo, menu_cmd, tiempo_restante,
-                                      inicial_time, inicial_date, detencion_programa)
+                                      lectura_archivo, menu_cmd,
+                                      inicial_time, inicial_date)
+
+from mod_cmd.exc_stop import detencion_programa
 from mod_opencl.mod_opencl_class import Generador
 
 
-def print_only_not_zero(value):
-    suma = np.sum(value[:2])
-    if np.abs(suma) > 1.e-20:
-        print(value)
+
+def dep_matrix_(matrix_dep_in, matrix_dep_out, bool_control):
+
+    index_delete = np.where(((matrix_dep_in[:,0]==0.0) &
+                    (matrix_dep_in[:,1]==0.0)))[0]
+    to_file = np.delete(matrix_dep_in, index_delete, axis=0)
+    if matrix_dep_out is not None:
+        matrix_dep_out = np.concatenate((matrix_dep_out, to_file), axis=0)
+    else:
+        matrix_dep_out = to_file
+        bool_control = True
+    return matrix_dep_out, bool_control
+
+def escritura_valores_difundidos(array_to_file, file_save, bool_control, size = 20_000):
+    if len(array_to_file)>=size:
+        np.savetxt(file_save, array_to_file)
+        bool_control = False
+        array_to_file = None
+    return array_to_file, bool_control
+
 
 def main():
     _paso =np.float64(100) #Paso de integracion
-#    global time_lista
     time_lista = []
     tiempo_inicio_prgm = inicial_date()
     argumentos = menu_cmd()
@@ -83,18 +99,19 @@ def main():
     Generador_A.OpenCL_contexto()
     with open("test.dat", "w") as file_save:
         try:
-            depur = [np.float64(0.0) for _ in range(6)]
             inicio = 0
+            array_to_file_3d = None
+            escritura_3d = True
             for valor in range(arg):
                 imp_pantalla(valor, arg, valor_i, valor_f, inicio, time_lista)
                 Generador_A.ejecucion_kernel(valor_i, valor_f)
                 inicio = inicial_time()
                 Generador_A.enq_copy()
+                array_to_file_3d, escritura_3d = dep_matrix_(Generador_A.vec_print_3d,
+                                                             array_to_file_3d, escritura_3d )
 
-                index_delete = np.where(((Generador_A.vec_print_3d[:,0]==0.0) &
-                                (Generador_A.vec_print_3d[:,1]==0.0)))[0]
-                to_file = np.delete(Generador_A.vec_print_3d, index_delete, axis=0)
-                np.savetxt(file_save, to_file)
+                array_to_file_3d, escritura_3d = escritura_valores_difundidos(array_to_file_3d,
+                                                                              file_save, escritura_3d)
                 valor_i = valor_f
                 valor_f += _paso
                 Generador_A.reset_buffer_print()
@@ -102,6 +119,8 @@ def main():
                 detencion_programa()
         except StopIteration:
             nombre_detencion = inicial_date()
+            if escritura_3d:
+                np.savetxt(file_save, array_to_file_3d)
             escritura_archivo('detencion_'+nombre_detencion+'.dat',
                               Generador_A.vector_out, valor_i, Generador_A._ensambles)
             print(Generador_A.vector_out)
