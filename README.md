@@ -1,8 +1,8 @@
 # Runge Kutta 8 Python-OpenCL <br />
 
 Runge Kutta 8 of 13 steps codded with vector4 support. <br />
-For a superior number of diffential equations vector4 must be replaced for vector8 or vector16.<br />
-In any other case vector4 must be replace by an array. <br />
+For a superior number of diffential equations vector4 must be replaced, by vector8 or vector16.<br />
+Or in any other case vector4 must be replace, by an array. <br />
 
 
 *Dependencies* <br />
@@ -17,6 +17,9 @@ __OpenCL ICD__ <br />
 *Set initial time `-i` or `--initial-time`* <br />
 *Set end time `-f` or `--end-time`* <br />
 *Set final conditions name file `-S` or `--file_name <file_name>`* <br />
-
+*Print on screen integration step values `-V True` or `--verbose True`. Default = False* <br />
+*Print on screen integration step information `-tR True` or `--time-rem True`. Default = True* <br />
 For initial conditions from a file change the size of the elements in argument function *read_from_file* <br />
+
+
 

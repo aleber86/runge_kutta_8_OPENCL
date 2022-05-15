@@ -1,27 +1,21 @@
-
-/*IMPLEMENTACION DE LA SUBRUTINA DOPRI8.f
- * PARA OPENCL, DIRECTAMENTE APLICADO SOBRE
- * EL CALCULO DEL PROBLEMA DE ARNOLD */
-
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable    // enable Float64
+#include"coeficient_block.h"
 
 
-
-double4 func(double4 arg, double time_value){
+double4 diff_eq(double4 arg, double time_value){
     double4 result;
     result.x = 1.0;
     result.y = 2.0*time_value;
-    result.z =  1.0;
+    result.z =  -sin(time_value);
     result.w = 1.0;
     
     return result;
-//   return (double4)(1.0,2.0*time_value ,3.0*pown(time_value,2) , 4.0*pown(time_value,3));
 }
     
     
-    void integration_function(double t, double4 *y_b, double tfin, double eps,
+    void integration_function(double t, double4 *y_b, double tfin, double epsilon,
         double hmax, double h, 
-         __global int *exi, int echo, int lid, int gud, int lsz){
+         __global int *exi, int echo, int gid){
 
 
     double4 y11s, y12s, k[7], y_l, y;
@@ -33,9 +27,9 @@ double4 func(double4 arg, double time_value){
     int nmax;
 
     y = *y_b;
-    /*  COEFICIENTES:
+    /*  COEF:
      *  ************/
-
+/*
      double c2 = 0.55555555555555552471602709374565E-01;
      double c3 = 0.83333333333333328707404064061848E-01;
      double c4 = 0.12500000000000000000000000000000;    
@@ -124,19 +118,17 @@ double4 func(double4 arg, double time_value){
     double bh10 = 1.4435485836767751877118826087099;    
     double bh11 = 0.79415595881127287736234166004579E-01;
     double bh12 = 0.44444444444444446140618509843989E-01;
+*/
 
 
-    /*FIN DEL BLOQUE DE COEFICIENTES*/
-
-
-    nmax = 3000;   //Maxima cantidad de pasos.
+    nmax = 3000;   //Maximum value of iteration.
     uround = 1.73e-15; // 1.e0+uround>1.e0
 
     posneg = copysign(1.e0, tfin - t);
     hmax = fabs(hmax);
     h = min(max(1.e-10, fabs(h)), hmax);
     h = copysign(h, posneg);
-    eps = max(eps, 13.e0 * uround);
+    epsilon = max(epsilon, 13.e0 * uround);
     reject = false;
     ok = true;
     naccpt = 0;
@@ -145,12 +137,10 @@ double4 func(double4 arg, double time_value){
     nstep = 0;
     
 
-    //se puede agregar una funcion que copie los valores intermedios
-    //a la memoria global (no implementado para el caso de la difusion).
     while(ok){
     ok2 = true;
     if (nstep > nmax || t+0.3e0*h == t){
-        exi[lid + gud*lsz] = 1;
+        exi[gid] = 1;
        echo = 1;
         return ;
     }
@@ -163,7 +153,7 @@ double4 func(double4 arg, double time_value){
         h = tfin-t;
     }
     //K1:
-    k[0] = func(y, t);
+    k[0] = diff_eq(y, t);
     //ACA VIENE UN WHILE PARA CORREGIR EL GOTO
     while(ok2){
     nstep++;
@@ -173,45 +163,45 @@ double4 func(double4 arg, double time_value){
     y_l = y + h*a21*k[0];
 
     //K2:
-    k[1] = func(y_l, t+c2*h);
+    k[1] = diff_eq(y_l, t+c2*h);
     y_l = y + h*(a31*k[0] + a32*k[1]);
 
     //K3:
-    k[2] = func(y_l, t+c3*h);
+    k[2] = diff_eq(y_l, t+c3*h);
     y_l = y + h*(a41*k[0] + a43*k[2]);
 
     //K4:
 
-    k[3] = func(y_l, t+c4*h);
+    k[3] = diff_eq(y_l, t+c4*h);
     y_l = y + h*(a51*k[0] + a53*k[2] + a54*k[3]);
 
 
     //K5:
 
-    k[4] = func(y_l, t+c5*h);
+    k[4] = diff_eq(y_l, t+c5*h);
     y_l = y + h*(a61*k[0] + a64*k[3] +a65*k[4]);
 
     //K6:
 
-    k[5] = func(y_l, t+c6*h);
+    k[5] = diff_eq(y_l, t+c6*h);
     y_l = y + h*(a71*k[0] + a74*k[3] + a75*k[4] +
             a76*k[5]);
 
     //K7:
 
-    k[6] = func(y_l, t+c7*h);
+    k[6] = diff_eq(y_l, t+c7*h);
     y_l = y + h*(a81*k[0] + a84*k[3] + a85*k[4] +
             a86*k[5] + a87*k[6]);
 
     //K8:
     
-    k[1] = func(y_l, t+c8*h);
+    k[1] = diff_eq(y_l, t+c8*h);
     y_l = y + h*(a91*k[0] + a94*k[3] + a95*k[4] +
             a96*k[5] + a97*k[6] + a98*k[1]);
 
     //K9:
 
-    k[2] = func(y_l, t+c9*h);
+    k[2] = diff_eq(y_l, t+c9*h);
     y_l = y + h*(a101*k[0] + a104*k[3] + a105*k[4] +
             a106*k[5] + a107*k[6] + a108*k[1] + a109*k[2]);
 
@@ -232,18 +222,18 @@ double4 func(double4 arg, double time_value){
 
     //Las 4 etapas faltantes.
 
-    k[6] = func(y_l, t+c10*h);
+    k[6] = diff_eq(y_l, t+c10*h);
     y_l = y + h*(k[1] + a1110*k[6]);
-    k[1] = func(y_l, t+c11*h);
+    k[1] = diff_eq(y_l, t+c11*h);
     xph = t+h;
 
     y_l = y + h*(k[2] + a1210*k[6] + a1211*k[1]);
 
-    k[2] = func(y_l, xph);
+    k[2] = diff_eq(y_l, xph);
 
     y_l = y + h*(k[3] + a1310*k[6] + a1311*k[1]);
 
-    k[3] = func(y_l, xph);
+    k[3] = diff_eq(y_l, xph);
 
     nfcn = nfcn + 13;
 
@@ -255,26 +245,26 @@ double4 func(double4 arg, double time_value){
     // Estimacion del error.
     
     err = 0.e0;
-    denom = max(max(1.e-6, fabs(k[4].x)), max(fabs(y.x), 2.e0*uround/eps));
+    denom = max(max(1.e-6, fabs(k[4].x)), max(fabs(y.x), 2.e0*uround/epsilon));
     err = err + pown(((k[4].x-k[5].x)/denom), 2);
     
-    denom = max(max(1.e-6, fabs(k[4].y)), max(fabs(y.y), 2.e0*uround/eps));
+    denom = max(max(1.e-6, fabs(k[4].y)), max(fabs(y.y), 2.e0*uround/epsilon));
     err = err + pown(((k[4].y-k[5].y)/denom), 2);
     
-    denom = max(max(1.e-6, fabs(k[4].z)), max(fabs(y.z), 2.e0*uround/eps));
+    denom = max(max(1.e-6, fabs(k[4].z)), max(fabs(y.z), 2.e0*uround/epsilon));
     err = err + pown(((k[4].z-k[5].z)/denom), 2);
     
-    denom = max(max(1.e-6, fabs(k[4].w)), max(fabs(y.w), 2.e0*uround/eps));
+    denom = max(max(1.e-6, fabs(k[4].w)), max(fabs(y.w), 2.e0*uround/epsilon));
     err = err + pown(((k[4].w-k[5].w)/denom), 2);
     err = sqrt(err/4.0);
 
     //Calculo de hnew
     //.333<=hnew/w<=6.
 
-    fac = max((1.e0/6.e0), min(3.e0, pow((err/eps),1.e0/8.e0)/0.9e0));
+    fac = max((1.e0/6.e0), min(3.e0, pow((err/epsilon),1.e0/8.e0)/0.9e0));
     hnew = h/fac;
 
-    if(islessequal(err,eps)){
+    if(islessequal(err,epsilon)){
    //Paso aceptado 
         naccpt++;
         
@@ -312,41 +302,39 @@ double4 func(double4 arg, double time_value){
 
 __kernel void runge_kutta_8(__global double4 *vector_out, 
         __constant double4 *vector_in, int dimension,
-        double tiempo_i, double tiempo_f, __local double4 *local_buffer,
+        double initial_time_step, double final_time, __local double4 *local_buffer,
          __global int *exit_c, __global double *time_matrix_out)
 {
-    /* vector_in contiene la matriz de ensambles con 128 elementos cada uno 
-     * vector_out (theta_1, theta_2, I_1, I_2)
-     */
-    int gud_0, lsz_0, lid_0, gsz_0;
+    int gud_0, lsz_0, lid_0, gsz_0, gid_0;
     gud_0 = get_group_id(0);
     lid_0 = get_local_id(0);
     lsz_0 = get_local_size(0);
     gsz_0 = get_global_size(0);
-    int gid_0 = get_global_id(0);
-    double paso;
+    gid_0 = get_global_id(0);
+    double step_;
     double time_start;
     double4 val;
-    double dpi = 8.0*atan(1.0);
-    time_start = tiempo_i;
+    time_start = initial_time_step;
     int eco = 0;
 
     double h= 1.e-1;
     double hmax = 1.e-2;
     double error = 1.e-15;
-    paso = (tiempo_f-tiempo_i)/dimension; //step size
+    step_ = (final_time-initial_time_step)/dimension; //step size
     val = vector_in[gid_0];
-//    barrier(CLK_LOCAL_MEM_FENCE);
-    int counter = 0;
-    for (int i = 0; i <= dimension; i++){
-        tiempo_f = time_start + i*paso;
-        integration_function(tiempo_i, &val , tiempo_f, error, hmax, h,  exit_c, eco, lid_0, gud_0, lsz_0); //Exec. integration
-        if (gid_0==0){
-            time_matrix_out[i] = tiempo_f;
-        }        
-        vector_out[gid_0 + i*gsz_0] = val;
-        tiempo_i = tiempo_f;
 
+    for (int i = 0; i <= dimension; i++){
+        final_time = time_start + i*step_;
+        integration_function(initial_time_step, &val , final_time, error, hmax, h,  exit_c, eco, gid_0); //Exec. integration
+        if (gid_0==0){
+            /*Only gid_0 = 0 fills time matrix with every step */
+            time_matrix_out[i] = final_time;
+        }
+        /*Output every step of integration.*/
+        vector_out[gid_0 + i*gsz_0] = val;
+        initial_time_step = final_time;
+        
+        /*Kill the integration process if error */
         if (eco == 0){
             ;
         }
@@ -354,19 +342,8 @@ __kernel void runge_kutta_8(__global double4 *vector_out,
         return ;
             }
         
-    /*}
-     * En caso que se busque la ecuacion de movimiento, descomentar, agregar
-     * una matriz de filas = dimension en el argumento del kernel en espacio __global
-     * para obtener todos los datos. Se puede evitar el uso de barreras, siempre y cuando
-     * las integraciones no sean cruzadas entre work-items (no haya interaciones entre datos
-     * vectores distintos). 
-     * vector_out[gid_0+i*dimension] = vec_out[lid_0];
-     * Siempre que sea posible, usar memoria local para la mayor cantidad de calulos.
-    */
-        
-        
     }
-    vector_out[gud_0*lsz_0 + lid_0] = val;
+    vector_out[gid_0] = val;
 }
 
 

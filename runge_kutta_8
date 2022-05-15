@@ -20,6 +20,10 @@ def matrix_generator(dim1, dim2, precision, random = True):
 
     return array
 
+def print_arg(p_arguments, status = False):
+    if status:
+        print('\n', p_arguments, '\n')
+
 def main():
     _wp = np.float64
     _step = _wp(100)
@@ -48,7 +52,7 @@ def main():
     value_f = value_i + _step
 
     OpenCL_Object_Instance = OpenCL_Object()
-    OpenCL_Object_Instance.program("kernel_opencl/gpu.cl")
+    OpenCL_Object_Instance.program("kernel_opencl/gpu.cl", ["-I kernel_opencl"])
     
     if arguments.initial_condition is None:
         matrix_in = matrix_generator(_dim1,1, _wp)
@@ -77,9 +81,8 @@ def main():
 
 #    with open(f"Integration{program_initial_time}.dat", "w") as file_all_steps:
     try:
-        initial_ = 0
         for value in range(arg):
-            print_on_screen(value, arg, value_i, value_f, initial_, time_list)
+            initial_ = time_counter()
             OpenCL_Object_Instance.kernel.runge_kutta_8(OpenCL_Object_Instance.queue, 
                                                  (_problem_dimension,), (_local_size,), 
                                                  OpenCL_Object_Instance.matrix_out_device,
@@ -96,12 +99,17 @@ def main():
             cl.enqueue_copy(OpenCL_Object_Instance.queue, 
                             OpenCL_Object_Instance.time_matrix_out,
                             OpenCL_Object_Instance.time_matrix_out_device)
+
+            print_on_screen(value, arg, value_i, value_f, initial_, time_list, active = arguments.time_rem)
+
             to_file = np.column_stack([OpenCL_Object_Instance.time_matrix_out, OpenCL_Object_Instance.matrix_out])
-            print(to_file)
-#                np.savetxt(file_all_steps, to_file)
+            print_arg(to_file, arguments.verbose)
+            #< If every step of integration must be known. Uncomment and add a save file>
+            #Replace the matrix_out(dimension, dim1) for a matrix_out(1, dim1). In kernel file replace 
+            #vector_out[gid_0+ i* dimension] for vector_out[gid_0] outside for loop
+            
             matrix_feedback = OpenCL_Object_Instance.matrix_out[_dimension].copy()
             OpenCL_Object_Instance.buffer_global(matrix_feedback, "matrix_in")
-            initial_ = time_counter()
             value_i = value_f
             value_f += _step
             execution_kill()
@@ -109,7 +117,6 @@ def main():
         interrupt_name = time_stamp()
         write_to_file(f"keyboard_interrupt_{interrupt_name}.dat",
                           OpenCL_Object_Instance.matrix_out[_dimension], value_i, 1)
-        print(OpenCL_Object_Instance.matrix_out[_dimension])
         sys.exit(0)
 
 

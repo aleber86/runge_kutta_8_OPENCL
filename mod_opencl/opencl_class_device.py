@@ -94,10 +94,10 @@ class OpenCL_Object(Platform_Device_OpenCL):
       true_value_name = self.__new_parameter(buffer_name)
       self.__assign_attrib(true_value_name, buffer_name, local_buffer, "_device")
 
-    def program(self, kernel_file_name : str):
+    def program(self, kernel_file_name : str, bulid_options : ["opt", "-I <dir>"] = []):
         with open(f"{kernel_file_name}", "r") as file:
             kernel_read = file.read()
-        prog = cl.Program(self.ctx, kernel_read).build()
+        prog = cl.Program(self.ctx, kernel_read).build( bulid_options )
         self.__setattr__("kernel", prog)
 
     def execute_compiled_program(self, program_name : str,  **kwarg):
