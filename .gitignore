@@ -1,4 +1,12 @@
 #DATA FILES
-.dat
-#CL BUFFER
+*.dat
+#BUFFERED
 .cl~
+.py~
+#Back up folder
+*/back_up
+#Pre-compiled
+*.pyc
+*/__pycache__
+#Gitignore
+.gitignore

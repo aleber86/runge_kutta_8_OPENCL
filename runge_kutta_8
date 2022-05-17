@@ -24,6 +24,11 @@ def print_arg(p_arguments, status = False):
     if status:
         print('\n', p_arguments, '\n')
 
+def error_output(object_input):
+    if np.sum(object_input.exit_condition) != 0:
+        print("Error in column: (1 for error, 0 OK)")
+        print(object_input.exit_condition)
+
 def main():
     _wp = np.float64
     _step = _wp(100)
@@ -61,8 +66,8 @@ def main():
         matrix_in = np.zeros((1, _dim1), dtype = _wp)
     else:
         matrix_in = read_from_file(arguments.initial_condition, 512, _wp)
-    matrix_out = matrix_generator(_dimension+1, _dim1, _wp, False)
-    time_matrix_out = matrix_generator(_dimension+1, 1, _wp, False)
+    matrix_out = matrix_generator(1, _dim1, _wp, False)
+    time_matrix_out = matrix_generator(1, 1, _wp, False)
     exit_condition = matrix_generator(1,_dim1, np.int32, False) 
 
     #Ensures that device has enough global memory
@@ -103,16 +108,19 @@ def main():
                             OpenCL_Object_Instance.time_matrix_out,
                             OpenCL_Object_Instance.time_matrix_out_device)
 
-            print_on_screen(value, arg, value_i, value_f, initial_, time_list, active = arguments.time_rem)
+            cl.enqueue_copy(OpenCL_Object_Instance.queue, 
+                            OpenCL_Object_Instance.exit_condition,
+                            OpenCL_Object_Instance.exit_condition_device)
 
+            print_on_screen(value, arg, value_i, value_f, initial_, time_list, active = arguments.time_rem)
+            error_output(OpenCL_Object_Instance)
             to_file = np.column_stack([OpenCL_Object_Instance.time_matrix_out, OpenCL_Object_Instance.matrix_out])
             print_arg(to_file, arguments.verbose)
             #< If every step of integration must be known. Uncomment and add a save file>
             #Replace the matrix_out(dimension, dim1) for a matrix_out(1, dim1). In kernel file replace 
             #vector_out[gid_0+ i* dimension] for vector_out[gid_0] outside for loop
             
-            matrix_feedback = OpenCL_Object_Instance.matrix_out[_dimension].copy()
-            OpenCL_Object_Instance.buffer_global(matrix_feedback, "matrix_in")
+            OpenCL_Object_Instance.buffer_global(OpenCL_Object_Instance.matrix_out, "matrix_in")
             value_i = value_f
             value_f += _step
             execution_kill()
@@ -123,7 +131,7 @@ def main():
         OpenCL_Object_Instance.free_buffer("time_matrix_out_device") #Release all buffers from device
         OpenCL_Object_Instance.free_buffer("exit_condition_device") #Release all buffers from device
         write_to_file(f"keyboard_interrupt_{interrupt_name}.dat",
-                          OpenCL_Object_Instance.matrix_out[_dimension], value_i, 1)
+                          OpenCL_Object_Instance.matrix_out, value_i, 1)
         sys.exit(0)
 
 
