@@ -1,14 +1,12 @@
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable    // enable Float64
 #include"coeficient_block.h"
 
-
 double4 diff_eq(double4 arg, double time_value){
     double4 result;
-    result.x = 1.0;
-    result.y = 2.0*time_value;
-    result.z =  -sin(time_value);
-    result.w = 1.0;
-    
+    result.x = time_value;
+    result.y = arg[0];
+    result.z = arg[1];
+    result.w = arg[2];
     return result;
 }
     
@@ -27,9 +25,11 @@ double4 diff_eq(double4 arg, double time_value){
     int nmax;
 
     y = *y_b;
-    /*  COEF:
+
+    /*  double cOEF:
      *  ************/
-/*
+  
+     /* 
      double c2 = 0.55555555555555552471602709374565E-01;
      double c3 = 0.83333333333333328707404064061848E-01;
      double c4 = 0.12500000000000000000000000000000;    
@@ -120,9 +120,8 @@ double4 diff_eq(double4 arg, double time_value){
     double bh12 = 0.44444444444444446140618509843989E-01;
 */
 
-
-    nmax = 3000;   //Maximum value of iteration.
-    uround = 1.73e-15; // 1.e0+uround>1.e0
+    nmax = 6000;   //Maximum value of iteration.
+    uround = 1.73e-18; // 1.e0+uround>1.e0
 
     posneg = copysign(1.e0, tfin - t);
     hmax = fabs(hmax);
@@ -154,7 +153,7 @@ double4 diff_eq(double4 arg, double time_value){
     }
     //K1:
     k[0] = diff_eq(y, t);
-    //ACA VIENE UN WHILE PARA CORREGIR EL GOTO
+    //double adouble cA VIENE UN WHILE PARA CORREGIR EL GOTO
     while(ok2){
     nstep++;
 
@@ -258,7 +257,7 @@ double4 diff_eq(double4 arg, double time_value){
     err = err + pown(((k[4].w-k[5].w)/denom), 2);
     err = sqrt(err/4.0);
 
-    //Calculo de hnew
+    //double calculo de hnew
     //.333<=hnew/w<=6.
 
     fac = max((1.e0/6.e0), min(3.e0, pow((err/epsilon),1.e0/8.e0)/0.9e0));
@@ -317,33 +316,35 @@ __kernel void runge_kutta_8(__global double4 *vector_out,
     time_start = initial_time_step;
     int eco = 0;
 
-    double h= 1.e-1;
-    double hmax = 1.e-2;
+    double h= 1.e-2;
+    double hmax = 1.e0;
     double error = 1.e-15;
-    step_ = (final_time-initial_time_step)/dimension; //step size
+    step_ =(final_time-initial_time_step)/dimension; //step size
+
     val = vector_in[gid_0];
 
     for (int i = 0; i <= dimension; i++){
-        final_time = time_start + i*step_;
-        integration_function(initial_time_step, &val , final_time, error, hmax, h,  exit_c, eco, gid_0); //Exec. integration
+        final_time = fma(i, step_, initial_time_step);
+        integration_function(time_start, &val , final_time, error, hmax, h,  exit_c, eco, gid_0); //Exec. integration
         if (gid_0==0){
             /*Only gid_0 = 0 fills time matrix with every step */
             time_matrix_out[i] = final_time;
         }
         /*Output every step of integration.*/
         vector_out[gid_0 + i*gsz_0] = val;
-        initial_time_step = final_time;
+        time_start = final_time;
         
         /*Kill the integration process if error */
+        /*
         if (eco == 0){
             ;
         }
         else{
         return ;
             }
-        
+        */
     }
-    vector_out[gid_0] = val;
+   // vector_out[gid_0] = val; //Uncomment only last step. Comment vector_out[gid_0 + i*gsz_0] reduce mem buffer size
 }
 
 

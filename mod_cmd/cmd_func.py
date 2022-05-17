@@ -33,6 +33,10 @@ def menu_cmd():
                            help = """Print on screen step information and time remaining. Default = True""",
                            action = 'store',
                            default = True)
+    Arg_parse.add_argument('-d', '--debug', type = bool,
+                           help = """Set initial conditions to 0""",
+                           action = 'store',
+                           default = False)
     value = Arg_parse.parse_args()
     return value
 

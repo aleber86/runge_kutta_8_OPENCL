@@ -54,8 +54,11 @@ def main():
     OpenCL_Object_Instance = OpenCL_Object()
     OpenCL_Object_Instance.program("kernel_opencl/gpu.cl", ["-I kernel_opencl"])
     
-    if arguments.initial_condition is None:
+    if arguments.initial_condition is None and not arguments.debug :
         matrix_in = matrix_generator(_dim1,1, _wp)
+
+    elif arguments.debug:
+        matrix_in = np.zeros((1, _dim1), dtype = _wp)
     else:
         matrix_in = read_from_file(arguments.initial_condition, 512, _wp)
     matrix_out = matrix_generator(_dimension+1, _dim1, _wp, False)
@@ -115,12 +118,21 @@ def main():
             execution_kill()
     except StopIteration:
         interrupt_name = time_stamp()
+        OpenCL_Object_Instance.free_buffer("matrix_in_device") #Release all buffers from device
+        OpenCL_Object_Instance.free_buffer("matrix_out_device") #Release all buffers from device
+        OpenCL_Object_Instance.free_buffer("time_matrix_out_device") #Release all buffers from device
+        OpenCL_Object_Instance.free_buffer("exit_condition_device") #Release all buffers from device
         write_to_file(f"keyboard_interrupt_{interrupt_name}.dat",
                           OpenCL_Object_Instance.matrix_out[_dimension], value_i, 1)
         sys.exit(0)
 
 
     write_to_file(name_file_results, OpenCL_Object_Instance.matrix_out, value_i)
+    OpenCL_Object_Instance.free_buffer("matrix_in_device") #Release all buffers from device
+    OpenCL_Object_Instance.free_buffer("matrix_out_device") #Release all buffers from device
+    OpenCL_Object_Instance.free_buffer("time_matrix_out_device") #Release all buffers from device
+    OpenCL_Object_Instance.free_buffer("exit_condition_device") #Release all buffers from device
+   
     sys.exit(0)
 
 if __name__ == "__main__":

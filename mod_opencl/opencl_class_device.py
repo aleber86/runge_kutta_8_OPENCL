@@ -129,10 +129,12 @@ class OpenCL_Object(Platform_Device_OpenCL):
                     name.count("ctx")==0):
                 self.__delattr__(name)
 
-    def free_buffer(self):
-        for name in self.__dict__.keys():
-            if (name.endswith("_device") and not name.startswith("device")):
-                exec(f"self.{name}.release()")
+    def free_buffer(self, name):
+        try:
+            exec(f"self.{name}.release()")
+        except AttributeError:
+            print(f"{self}.{name} is not a global memory buffer in device")
+
 
     def return_attrib(self):
         return self.attrib_for_exec
