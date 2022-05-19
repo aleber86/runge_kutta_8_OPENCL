@@ -4,8 +4,8 @@
 double4 diff_eq(double4 arg, double time_value){
     double4 result;
     result.x = 2.0*time_value;
-    result.y = arg[0];
-    result.z = arg[1];
+    result.y = sin(time_value);
+    result.z = cos(time_value);
     result.w = arg[2];
     return result;
 }
@@ -222,7 +222,7 @@ __kernel void runge_kutta_8(__global double4 *vector_out,
     time_start = initial_time_step;
     int eco = 0;
 
-    double h= 1.e-3;
+    double h= 1.e-2;
     double hmax = 1.e0;
     double error = 1.e-15;
     step_ =(final_time-initial_time_step)/dimension; //step size
@@ -242,6 +242,8 @@ __kernel void runge_kutta_8(__global double4 *vector_out,
             }
     }
    vector_out[gid_0] = val; //Uncomment only last step. Comment vector_out[gid_0 + i*gsz_0] reduce mem buffer size
+   time_matrix_out[gid_0] = time_start;
+    
 }
 
 

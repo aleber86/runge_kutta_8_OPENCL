@@ -16,9 +16,14 @@ def matrix_generator(dim1, dim2, precision, random = True):
     if random:
         array = np.array([[np.random.random() for _ in range(dim2)] for _ in range(dim1)], dtype = precision)
     else:
-        array = np.zeros((dim1, dim2), dtype = precision)
+        array = np.array([[0.0 for _ in range(dim2)] for _ in range(dim1)], dtype = precision)
 
     return array
+
+def time_matrix_gen(dim1, dim2, _wp = np.float64):
+    array = np.zeros((dim1, dim2), dtype = _wp)
+    return array            
+
 
 def print_arg(p_arguments, status = False):
     if status:
@@ -37,7 +42,7 @@ def main():
     _vector_type = 4
     _local_size = 64
     _local_size_vector = _local_size*_vector_type
-    _problem_dimension = int(_dim1/_vector_type)
+    _problem_dimension = _dim1
 
     time_list = []
     program_initial_time = time_stamp()
@@ -60,14 +65,14 @@ def main():
     OpenCL_Object_Instance.program("kernel_opencl/gpu.cl", ["-I kernel_opencl"])
     
     if arguments.initial_condition is None and not arguments.debug :
-        matrix_in = matrix_generator(_dim1,1, _wp)
+        matrix_in = matrix_generator(_dim1,_vector_type, _wp)
 
     elif arguments.debug:
-        matrix_in = np.zeros((1, _dim1), dtype = _wp)
+        matrix_in = np.zeros((_dim1, _vector_type), dtype = _wp)
     else:
         matrix_in = read_from_file(arguments.initial_condition, 512, _wp)
-    matrix_out = matrix_generator(1, _dim1, _wp, False)
-    time_matrix_out = matrix_generator(1, 1, _wp, False)
+    matrix_out = matrix_generator(_dim1, _vector_type, _wp, False)
+    time_matrix_out = time_matrix_gen(512,1,_wp)
     exit_condition = matrix_generator(1,_dim1, np.int32, False) 
 
     #Ensures that device has enough global memory
@@ -130,10 +135,9 @@ def main():
         OpenCL_Object_Instance.free_buffer("matrix_out_device") #Release all buffers from device
         OpenCL_Object_Instance.free_buffer("time_matrix_out_device") #Release all buffers from device
         OpenCL_Object_Instance.free_buffer("exit_condition_device") #Release all buffers from device
-        write_to_file(f"keyboard_interrupt_{interrupt_name}.dat",
-                          OpenCL_Object_Instance.matrix_out, value_i, 1)
-        sys.exit(0)
+        write_to_file(f"keyboard_interrupt_{interrupt_name}.dat", OpenCL_Object_Instance.matrix_out, value_i, 1)
 
+        sys.exit(0)
 
     write_to_file(name_file_results, OpenCL_Object_Instance.matrix_out, value_i)
     OpenCL_Object_Instance.free_buffer("matrix_in_device") #Release all buffers from device
